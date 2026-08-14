@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT.strip().lower() == "production"
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def force_async_driver(cls, value: str) -> str:
+        if value.startswith("postgresql://") or value.startswith("postgres://"):
+            value = value.replace("://", "+asyncpg://", 1)
+        return value
 
     @model_validator(mode="after")
     def validate_keys_in_production(self) -> Settings:
