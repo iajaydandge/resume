@@ -1,3 +1,4 @@
+import re
 from typing import Literal
 
 from pydantic import field_validator, model_validator
@@ -25,6 +26,11 @@ class Settings(BaseSettings):
     def force_async_driver(cls, value: str) -> str:
         if value.startswith("postgresql://") or value.startswith("postgres://"):
             value = value.replace("://", "+asyncpg://", 1)
+        # SQLAlchemy's asyncpg dialect maps the ssl query param to sslmode,
+        # but passes sslmode/channel_binding through and crashes on them.
+        value = re.sub(r"(?i)sslmode=([^&]*)", r"ssl=\1", value)
+        value = re.sub(r"(?i)&?channel_binding=[^&]*", "", value)
+        value = value.rstrip("?&")
         return value
 
     @model_validator(mode="after")
